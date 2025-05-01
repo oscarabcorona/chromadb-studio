@@ -15,14 +15,17 @@ export interface DocumentMetadata {
 export interface CollectionInfo {
   name: string;
   count: number;
-  metadata: Record<string, unknown>;
+  dimension: number;
+  metadata?: Record<string, unknown>;
 }
 
 export interface QueryResult {
   pageContent: string;
-  metadata: DocumentMetadata;
-  score?: number;
-  embedding: number[];
+  metadata: {
+    id: string;
+    [key: string]: string | number | boolean | null | undefined;
+  };
+  embedding?: number[];
 }
 
 export interface EmbeddingFunction {
@@ -36,4 +39,11 @@ export interface ChromaDBManagerConfig {
   chunkOverlap?: number;
   ollamaBaseUrl?: string;
   ollamaModel?: string;
+}
+
+export interface Collection {
+  name: string;
+  count: number;
+  dimension: number;
+  created: string;
 }
