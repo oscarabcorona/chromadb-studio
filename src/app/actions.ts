@@ -3,6 +3,7 @@
 import { ChromaDBManager } from "@/lib/chroma-manager";
 import { CollectionInfo } from "@/types/embeddings";
 import { ChromaClient } from "chromadb";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 export async function createCollection(
   name: string,
@@ -48,6 +49,11 @@ export async function createCollection(
     });
 
     await manager.initialize();
+
+    // Revalidate both path and tags
+    revalidatePath("/studio");
+    revalidateTag("collections");
+
     return { success: true };
   } catch (error) {
     console.error("Failed to create collection:", error);
@@ -82,6 +88,11 @@ export async function deleteCollection(
     });
     await manager.initialize();
     await manager.deleteCollection();
+
+    // Revalidate both path and tags
+    revalidatePath("/studio");
+    revalidateTag("collections");
+
     return { success: true };
   } catch (error) {
     console.error("Failed to delete collection:", error);
