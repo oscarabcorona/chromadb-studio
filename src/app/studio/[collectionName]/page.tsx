@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import { DocumentsManager } from "@/components/documents/documents-manager";
 import { DocumentsStatus } from "@/components/documents/documents-status";
 
-export default async function CollectionPage({
-  params,
-}: {
-  params: { collectionName: string };
-}) {
-  const { collectionName } = params;
+interface PageProps {
+  params: Promise<{ collectionName: string }>;
+}
+
+export default async function CollectionPage({ params }: PageProps) {
+  // Await the params object
+  const resolvedParams = await params;
+  const collectionName = resolvedParams.collectionName;
 
   // Get collection info
   const collection = await getCollectionInfo(collectionName);
@@ -24,7 +26,6 @@ export default async function CollectionPage({
 
   // Fetch documents server-side
   const documents = await getCollectionDocuments(collectionName);
-  console.log("🚀 ~ documents:", documents);
 
   return (
     <div className="min-h-screen p-8">
