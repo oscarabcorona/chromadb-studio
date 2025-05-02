@@ -58,14 +58,38 @@ export class ChromaDBManager {
         return;
       }
 
+      // Check if collection exists first
+      const collections = await this.client.listCollections();
+      const exists = collections.includes(this.collectionName);
+
+      // Current timestamp
+      const timestamp = new Date().toISOString();
+
       this.collection = await this.client.getOrCreateCollection({
         name: this.collectionName,
         metadata: {
           "hnsw:space": "cosine",
           persist_directory: this.persistDirectory,
           dimension: this.dimension,
+          created: exists ? undefined : timestamp, // Only set on creation
+          updated: timestamp, // Always update this timestamp
         },
       });
+
+      // If collection already existed but we want to ensure it has timestamps
+      if (exists) {
+        const metadata = await this.getCollectionMetadata(this.collection);
+        if (!metadata.created) {
+          // @ts-expect-error - ChromaDB client types may not include modify
+          await this.collection.modify({
+            metadata: {
+              ...metadata,
+              created: timestamp,
+              updated: timestamp,
+            },
+          });
+        }
+      }
     } catch (error) {
       console.error("Failed to initialize collection:", error);
       throw error;
@@ -124,9 +148,11 @@ export class ChromaDBManager {
 
       if (newChunks.length > 0) {
         await this.addChunksToCollection(newChunks);
+        await this.updateCollectionTimestamp();
       }
     } else {
       await this.addChunksToCollection(chunksWithIds);
+      await this.updateCollectionTimestamp();
     }
   }
 
@@ -176,6 +202,21 @@ export class ChromaDBManager {
     }
   }
 
+  // Helper to safely get a string value from metadata
+  private getMetadataString(
+    metadata: Record<string, unknown>,
+    key: string
+  ): string {
+    const value = metadata[key];
+    if (typeof value === "string") {
+      return value;
+    }
+    if (value != null) {
+      return String(value); // Convert non-null values to string
+    }
+    return new Date().toISOString(); // Default to current date
+  }
+
   async listCollections(): Promise<CollectionInfo[]> {
     try {
       const collections = await this.client.listCollections();
@@ -190,7 +231,11 @@ export class ChromaDBManager {
           name: collection,
           count: await col.count(),
           dimension,
-          metadata,
+          metadata: metadata as {
+            created?: string;
+            updated?: string;
+            [key: string]: string | number | undefined;
+          },
         });
       }
 
@@ -209,7 +254,11 @@ export class ChromaDBManager {
       name: this.collectionName,
       count: await this.collection.count(),
       dimension,
-      metadata,
+      metadata: metadata as {
+        created?: string;
+        updated?: string;
+        [key: string]: string | number | undefined;
+      },
     };
   }
 
@@ -327,11 +376,38 @@ export class ChromaDBManager {
       documents: [newText],
       metadatas: [results.metadatas?.[0] || {}],
     });
+
+    // Update collection timestamp
+    await this.updateCollectionTimestamp();
   }
 
   async deleteDocument(docId: string): Promise<void> {
     await this.collection.delete({
       where: { id: docId },
     });
+
+    // Update collection timestamp
+    await this.updateCollectionTimestamp();
+  }
+
+  // Helper method to update the collection's 'updated' timestamp
+  private async updateCollectionTimestamp(): Promise<void> {
+    try {
+      const metadata = await this.getCollectionMetadata(this.collection);
+      const timestamp = new Date().toISOString();
+
+      // @ts-expect-error - ChromaDB client types may not include modify
+      await this.collection.modify({
+        metadata: {
+          ...metadata,
+          updated: timestamp,
+          // Ensure created timestamp exists
+          created: metadata.created || timestamp,
+        },
+      });
+    } catch (error) {
+      console.error("Failed to update collection timestamp:", error);
+      // Don't throw - this is a non-critical operation
+    }
   }
 }

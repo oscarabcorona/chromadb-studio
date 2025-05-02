@@ -16,8 +16,11 @@ export interface CollectionInfo {
   name: string;
   count: number;
   dimension: number;
-  metadata?: Record<string, unknown>;
-  created?: string;
+  metadata: {
+    created?: string;
+    updated?: string;
+    [key: string]: string | number | boolean | undefined;
+  };
 }
 
 export interface QueryResult {
@@ -48,4 +51,5 @@ export interface Collection {
   count: number;
   dimension: number;
   created: string;
+  updated: string;
 }
