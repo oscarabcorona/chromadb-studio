@@ -8,6 +8,7 @@ import {
 } from "@/types/embeddings";
 import { TextSplitter } from "./text-splitter";
 import { OllamaEmbeddings } from "./ollama";
+import { v4 as uuidv4 } from "uuid";
 
 // Ensure this code only runs on the server side
 if (typeof window !== "undefined") {
@@ -266,7 +267,7 @@ export class ChromaDBManager {
     id: string;
     [key: string]: string | number | boolean | null | undefined;
   } {
-    const id = metadata.id || crypto.randomUUID();
+    const id = metadata.id || uuidv4();
     return {
       ...metadata,
       id,

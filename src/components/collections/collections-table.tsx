@@ -8,7 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Trash2, Edit2, Search } from "lucide-react";
+import { Trash2, Edit2, Search, FileText } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +25,7 @@ import { CollectionInfo } from "@/types/embeddings";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CollectionViewDialog } from "./collection-view-dialog";
 import { CollectionEditDialog } from "./collection-edit-dialog";
+import { useRouter } from "next/navigation";
 
 interface CollectionsTableProps {
   collections: CollectionInfo[];
@@ -37,6 +38,7 @@ export function CollectionsTable({
   isLoading,
   onCollectionDeleted,
 }: CollectionsTableProps) {
+  const router = useRouter();
   console.log(collections);
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
@@ -90,6 +92,10 @@ export function CollectionsTable({
       setIsDeleting(false);
       setDeleteDialog({ open: false });
     }
+  };
+
+  const navigateToDocuments = (collectionName: string) => {
+    router.push(`/studio/${collectionName}`);
   };
 
   if (isLoading) {
@@ -148,6 +154,14 @@ export function CollectionsTable({
                       : "Unknown"}
                   </TableCell>
                   <TableCell className="text-right space-x-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => navigateToDocuments(collection.name)}
+                      aria-label={`Browse documents in ${collection.name}`}
+                    >
+                      <FileText className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="outline"
                       size="icon"
