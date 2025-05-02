@@ -299,22 +299,27 @@ export function DocumentsManager({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {documents.map((doc) => (
-                <TableRow key={doc.metadata.id}>
+              {documents.map((doc, index) => (
+                <TableRow key={doc.metadata.id || `doc-${index}`}>
                   <TableCell className="font-medium">
                     {truncateText(doc.pageContent)}
                   </TableCell>
-                  <TableCell>{truncateText(doc.metadata.id, 20)}</TableCell>
                   <TableCell>
-                    {Object.keys(doc.metadata).length > 1 ? (
-                      <span className="text-xs text-muted-foreground">
-                        {Object.keys(doc.metadata).length - 1} fields
-                      </span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">
-                        None
-                      </span>
+                    {doc.metadata.id || (
+                      <span className="text-red-500">ID not assigned</span>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    {Object.entries(doc.metadata)
+                      .filter(([key]) => key !== "id")
+                      .map(([key, value]) => (
+                        <div key={key} className="text-xs">
+                          <span className="font-semibold">{key}:</span>{" "}
+                          {typeof value === "string" && value.length > 20
+                            ? `${value.substring(0, 20)}...`
+                            : String(value)}
+                        </div>
+                      ))}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">

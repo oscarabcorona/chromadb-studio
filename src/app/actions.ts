@@ -8,6 +8,7 @@ import {
 } from "@/types/embeddings";
 import { ChromaClient } from "chromadb";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { v4 as uuidv4 } from "uuid";
 
 export async function createCollection(
   name: string,
@@ -245,7 +246,7 @@ export async function getCollectionDocuments(
 export async function addDocument(
   collectionName: string,
   document: { content: string; metadata?: DocumentMetadata }
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; id?: string }> {
   if (!collectionName || collectionName.trim() === "") {
     return {
       success: false,
@@ -266,17 +267,23 @@ export async function addDocument(
     });
     await manager.initialize();
 
+    // Generate a UUID for the document
+    const docId = uuidv4();
+
     await manager.addDocuments([
       {
         pageContent: document.content,
-        metadata: document.metadata || {},
+        metadata: {
+          ...(document.metadata || {}),
+          id: docId,
+        },
       },
     ]);
 
     // Revalidate path
     revalidatePath(`/studio/${collectionName}`);
 
-    return { success: true };
+    return { success: true, id: docId };
   } catch (error) {
     console.error("Failed to add document:", error);
     return {
