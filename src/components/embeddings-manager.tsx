@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { use } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
@@ -10,50 +11,63 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Database } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import { CollectionsTable } from "./collections/collections-table";
 import { Separator } from "./ui/separator";
 import { CreateCollectionDialog } from "./collections/create-collection-dialog";
 import { listCollections } from "@/app/actions";
 import { CollectionInfo } from "@/types/embeddings";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
-export function EmbeddingsManager() {
+export function EmbeddingsManager({
+  collectionsPromise,
+}: {
+  collectionsPromise: Promise<{
+    success: boolean;
+    data?: CollectionInfo[];
+    error?: string;
+  }>;
+}) {
+  const router = useRouter();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [collections, setCollections] = useState<CollectionInfo[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetchCollections = async () => {
-    setIsLoading(true);
+  const result = use(collectionsPromise);
+  const collections = result.success && result.data ? result.data : [];
+
+  if (!result.success && result.error) {
+    toast.error("Failed to load collections", {
+      description: result.error,
+    });
+  }
+
+  if (collections.length === 0 && !isCreateOpen) {
+    setIsCreateOpen(true);
+  }
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
     try {
-      const result = await listCollections();
-      if (result.success && result.data) {
-        setCollections(result.data);
-        // If no collections exist, show the create dialog
-        if (result.data.length === 0) {
-          setIsCreateOpen(true);
-        }
-      } else if (result.error) {
-        toast.error("Failed to load collections", {
-          description: result.error,
+      const freshResult = await listCollections();
+      if (!freshResult.success && freshResult.error) {
+        toast.error("Failed to refresh collections", {
+          description: freshResult.error,
         });
       }
     } catch (error) {
-      toast.error("Failed to load collections", {
+      toast.error("Failed to refresh collections", {
         description:
           error instanceof Error ? error.message : "Unknown error occurred",
       });
     } finally {
-      setIsLoading(false);
+      setIsRefreshing(false);
+      router.refresh();
     }
   };
 
-  useEffect(() => {
-    fetchCollections();
-  }, []);
-
   const handleCreateSuccess = () => {
-    fetchCollections();
+    router.refresh();
   };
 
   return (
@@ -65,27 +79,29 @@ export function EmbeddingsManager() {
             Manage and explore your ChromaDB collections
           </p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Collection
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            aria-label="Refresh collections"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+            />
+          </Button>
+          <Button
+            onClick={() => setIsCreateOpen(true)}
+            aria-label="Create new collection"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            New Collection
+          </Button>
+        </div>
       </div>
 
       <Separator />
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Collections
-            </CardTitle>
-            <Database className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{collections.length}</div>
-          </CardContent>
-        </Card>
-      </div>
 
       <Tabs defaultValue="collections" className="space-y-4">
         <TabsList>
@@ -96,8 +112,8 @@ export function EmbeddingsManager() {
         <TabsContent value="collections" className="space-y-4">
           <CollectionsTable
             collections={collections}
-            isLoading={isLoading}
-            onCollectionDeleted={fetchCollections}
+            isLoading={false}
+            onCollectionDeleted={handleRefresh}
           />
         </TabsContent>
         <TabsContent value="search">
@@ -109,7 +125,6 @@ export function EmbeddingsManager() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Search implementation will go here */}
               <p>Search functionality coming soon...</p>
             </CardContent>
           </Card>
@@ -123,7 +138,6 @@ export function EmbeddingsManager() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Settings implementation will go here */}
               <p>Settings configuration coming soon...</p>
             </CardContent>
           </Card>
