@@ -17,6 +17,7 @@ export interface CollectionInfo {
   count: number;
   dimension: number;
   metadata?: Record<string, unknown>;
+  created?: string;
 }
 
 export interface QueryResult {
@@ -39,6 +40,7 @@ export interface ChromaDBManagerConfig {
   chunkOverlap?: number;
   ollamaBaseUrl?: string;
   ollamaModel?: string;
+  dimension?: number;
 }
 
 export interface Collection {

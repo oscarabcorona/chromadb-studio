@@ -14,6 +14,14 @@ if (typeof window !== "undefined") {
   throw new Error("ChromaDBManager can only be used on the server side");
 }
 
+interface ChromaQueryResult {
+  ids?: string[] | string[][];
+  embeddings?: number[][] | number[][][];
+  documents?: string[] | string[][];
+  metadatas?: Record<string, unknown>[] | Record<string, unknown>[][];
+  distances?: number[] | number[][];
+}
+
 export class ChromaDBManager {
   private client: ChromaClient;
   private collection!: Collection;
@@ -21,10 +29,12 @@ export class ChromaDBManager {
   private embeddingFunction: OllamaEmbeddings;
   private collectionName: string;
   private persistDirectory: string;
+  private dimension?: number;
 
   constructor(config: ChromaDBManagerConfig = {}) {
-    this.collectionName = config.collectionName || "default_collection";
+    this.collectionName = config.collectionName || "";
     this.persistDirectory = config.persistDirectory || "./chroma_db";
+    this.dimension = config.dimension;
 
     this.client = new ChromaClient({
       path: process.env.NEXT_PUBLIC_CHROMA_DB_PATH || "http://localhost:8000",
@@ -43,11 +53,17 @@ export class ChromaDBManager {
 
   async initialize(): Promise<void> {
     try {
+      // Skip initialization if no collection name is provided (for listing collections)
+      if (!this.collectionName) {
+        return;
+      }
+
       this.collection = await this.client.getOrCreateCollection({
         name: this.collectionName,
         metadata: {
           "hnsw:space": "cosine",
           persist_directory: this.persistDirectory,
+          dimension: this.dimension,
         },
       });
     } catch (error) {
@@ -147,57 +163,6 @@ export class ChromaDBManager {
     }
   }
 
-  async query(
-    queryText: string,
-    nResults = 5,
-    where: Record<string, unknown> = {}
-  ): Promise<QueryResult[]> {
-    const embedding = (await this.embeddingFunction.embed([queryText]))[0];
-
-    const results = await this.collection.query({
-      queryEmbeddings: [embedding],
-      nResults,
-      where: Object.keys(where).length > 0 ? where : undefined,
-      include: ["embeddings", "documents", "distances", "metadatas"] as const,
-    });
-
-    if (!results.documents?.[0] || !results.embeddings?.[0]) {
-      return [];
-    }
-
-    return results.documents[0].map((doc, i) => {
-      const metadata = results.metadatas?.[0][i] || {};
-      // Convert Chroma metadata to our DocumentMetadata format
-      const documentMetadata: DocumentMetadata = {
-        ...Object.entries(metadata).reduce((acc, [key, value]) => {
-          if (
-            value !== undefined &&
-            (typeof value === "string" || typeof value === "number")
-          ) {
-            acc[key] = value;
-          }
-          return acc;
-        }, {} as DocumentMetadata),
-      };
-
-      const embeddings = results.embeddings;
-      if (!embeddings?.[0]?.[i]) {
-        throw new Error("Missing required embedding data");
-      }
-
-      return {
-        pageContent: doc || "",
-        metadata: documentMetadata,
-        score: results.distances?.[0][i],
-        embedding: embeddings[0][i],
-      };
-    });
-  }
-
-  async deleteCollection(): Promise<void> {
-    await this.client.deleteCollection({ name: this.collectionName });
-  }
-
   private async getCollectionMetadata(
     collection: Collection
   ): Promise<Record<string, unknown>> {
@@ -212,27 +177,103 @@ export class ChromaDBManager {
   }
 
   async listCollections(): Promise<CollectionInfo[]> {
-    const collections = await this.client.listCollections();
-    const collectionInfos: CollectionInfo[] = [];
+    try {
+      const collections = await this.client.listCollections();
+      const collectionInfos: CollectionInfo[] = [];
 
-    for (const collection of collections) {
-      const col = await this.client.getCollection({ name: collection });
-      collectionInfos.push({
-        name: collection,
-        count: await col.count(),
-        metadata: await this.getCollectionMetadata(col),
-      });
+      for (const collection of collections) {
+        const col = await this.client.getCollection({ name: collection });
+        const metadata = await this.getCollectionMetadata(col);
+        const dimension = (metadata.dimension as number) || 1536; // Default to 1536 if not specified
+
+        collectionInfos.push({
+          name: collection,
+          count: await col.count(),
+          dimension,
+          metadata,
+        });
+      }
+
+      return collectionInfos;
+    } catch (error) {
+      console.error("Failed to list collections:", error);
+      throw error;
     }
-
-    return collectionInfos;
   }
 
   async getCollectionInfo(): Promise<CollectionInfo> {
+    const metadata = await this.getCollectionMetadata(this.collection);
+    const dimension = (metadata.dimension as number) || 1536; // Default to 1536 if not specified
+
     return {
       name: this.collectionName,
       count: await this.collection.count(),
-      metadata: await this.getCollectionMetadata(this.collection),
+      dimension,
+      metadata,
     };
+  }
+
+  private ensureDocumentId(metadata: DocumentMetadata): {
+    id: string;
+    [key: string]: string | number | boolean | null | undefined;
+  } {
+    const id = metadata.id || crypto.randomUUID();
+    return {
+      ...metadata,
+      id,
+    };
+  }
+
+  private processQueryResults(results: ChromaQueryResult): QueryResult[] {
+    if (!results.documents || !results.embeddings) {
+      return [];
+    }
+
+    const docs = Array.isArray(results.documents[0])
+      ? results.documents[0]
+      : results.documents;
+    const embeddings = Array.isArray(results.embeddings[0])
+      ? results.embeddings[0]
+      : results.embeddings;
+    const metadatas =
+      results.metadatas &&
+      (Array.isArray(results.metadatas[0])
+        ? results.metadatas[0]
+        : results.metadatas);
+
+    return docs.map((doc, i) => {
+      const metadata = (metadatas && metadatas[i]) || {};
+      const documentMetadata = this.ensureDocumentId(
+        metadata as DocumentMetadata
+      );
+      const content = Array.isArray(doc) ? doc.join(" ") : doc;
+      const embedding = Array.isArray(embeddings[i])
+        ? embeddings[i]
+        : [embeddings[i]];
+
+      return {
+        pageContent: content || "",
+        metadata: documentMetadata,
+        embedding: embedding as number[],
+      };
+    });
+  }
+
+  async query(
+    queryText: string,
+    nResults = 5,
+    where: Record<string, unknown> = {}
+  ): Promise<QueryResult[]> {
+    const embedding = (await this.embeddingFunction.embed([queryText]))[0];
+
+    const results = await this.collection.query({
+      queryEmbeddings: [embedding],
+      nResults,
+      where: Object.keys(where).length > 0 ? where : undefined,
+      include: ["embeddings", "documents", "distances", "metadatas"] as const,
+    });
+
+    return this.processQueryResults(results);
   }
 
   async getAllDocuments(): Promise<QueryResult[]> {
@@ -250,30 +291,20 @@ export class ChromaDBManager {
 
     return results.documents.map((doc, i) => {
       const metadata = results.metadatas?.[i] || {};
-      // Convert Chroma metadata to our DocumentMetadata format
-      const documentMetadata: DocumentMetadata = {
-        ...Object.entries(metadata).reduce((acc, [key, value]) => {
-          if (
-            value !== undefined &&
-            (typeof value === "string" || typeof value === "number")
-          ) {
-            acc[key] = value;
-          }
-          return acc;
-        }, {} as DocumentMetadata),
-      };
-
-      const embeddings = results.embeddings;
-      if (!embeddings?.[i]) {
-        throw new Error("Missing required embedding data");
-      }
+      const documentMetadata = this.ensureDocumentId(
+        metadata as DocumentMetadata
+      );
 
       return {
         pageContent: doc || "",
         metadata: documentMetadata,
-        embedding: embeddings[i],
+        embedding: results.embeddings![i],
       };
     });
+  }
+
+  async deleteCollection(): Promise<void> {
+    await this.client.deleteCollection({ name: this.collectionName });
   }
 
   async updateDocument(docId: string, newText: string): Promise<void> {

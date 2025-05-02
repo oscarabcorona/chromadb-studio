@@ -1,11 +1,12 @@
 {
   "name": "chromadb-studio",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
+    "precommit": "npm run lint && npm run build",
     "lint": "next lint"
   },
   "dependencies": {
@@ -57,7 +58,8 @@
     "tailwind-merge": "^3.2.0",
     "uuid": "^11.1.0",
     "vaul": "^1.1.2",
-    "zod": "^3.24.3"
+    "zod": "^3.24.3",
+    "zustand": "^5.0.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

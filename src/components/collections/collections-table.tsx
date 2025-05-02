@@ -19,20 +19,27 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
+import { deleteCollection } from "@/app/actions";
+import { CollectionInfo } from "@/types/embeddings";
+import { Skeleton } from "@/components/ui/skeleton";
 
-interface Collection {
-  name: string;
-  count: number;
-  dimension: number;
-  created: string;
+interface CollectionsTableProps {
+  collections: CollectionInfo[];
+  isLoading: boolean;
+  onCollectionDeleted: () => void;
 }
 
-export function CollectionsTable() {
-  const [collections, setCollections] = useState<Collection[]>([]);
+export function CollectionsTable({
+  collections,
+  isLoading,
+  onCollectionDeleted,
+}: CollectionsTableProps) {
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
     collection?: string;
   }>({ open: false });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = (collection: string) => {
     setDeleteDialog({ open: true, collection });
@@ -41,17 +48,36 @@ export function CollectionsTable() {
   const confirmDelete = async () => {
     if (!deleteDialog.collection) return;
 
+    setIsDeleting(true);
     try {
-      // TODO: Implement delete collection
-      setCollections(
-        collections.filter((c) => c.name !== deleteDialog.collection)
-      );
+      const result = await deleteCollection(deleteDialog.collection);
+      if (result.success) {
+        toast.success("Collection deleted successfully");
+        onCollectionDeleted();
+      } else {
+        toast.error("Failed to delete collection", {
+          description: result.error,
+        });
+      }
     } catch (error) {
-      console.error("Failed to delete collection:", error);
+      toast.error("Failed to delete collection", {
+        description:
+          error instanceof Error ? error.message : "Unknown error occurred",
+      });
     } finally {
+      setIsDeleting(false);
       setDeleteDialog({ open: false });
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-24 w-full" />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -85,7 +111,11 @@ export function CollectionsTable() {
                   </TableCell>
                   <TableCell>{collection.count}</TableCell>
                   <TableCell>{collection.dimension}</TableCell>
-                  <TableCell>{collection.created}</TableCell>
+                  <TableCell>
+                    {new Date(
+                      collection.created || Date.now()
+                    ).toLocaleString()}
+                  </TableCell>
                   <TableCell className="text-right space-x-2">
                     <Button variant="outline" size="icon">
                       <Search className="h-4 w-4" />
@@ -97,6 +127,7 @@ export function CollectionsTable() {
                       variant="outline"
                       size="icon"
                       onClick={() => handleDelete(collection.name)}
+                      disabled={isDeleting}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -122,8 +153,8 @@ export function CollectionsTable() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>
-              Delete
+            <AlertDialogAction onClick={confirmDelete} disabled={isDeleting}>
+              {isDeleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

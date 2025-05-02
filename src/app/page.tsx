@@ -1,18 +1,9 @@
-import { EmbeddingsManager } from "@/components/embeddings-manager";
+import { SetupWizard } from "@/components/setup-wizard";
 
-export default function Home() {
+export default function LandingPage() {
   return (
-    <div className="min-h-screen p-8">
-      <header className="mb-8">
-        <h1 className="text-4xl font-bold">ChromaDB Studio</h1>
-        <p className="text-gray-500 mt-2">
-          Browse and manage your ChromaDB collections
-        </p>
-      </header>
-
-      <main>
-        <EmbeddingsManager />
-      </main>
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted p-8">
+      <SetupWizard />
     </div>
   );
 }

@@ -189,9 +189,6 @@ export function EmbeddingForm() {
             <ul className="space-y-4">
               {results.map((result, index) => (
                 <li key={index} className="p-4 border rounded-lg">
-                  <p className="text-sm text-gray-600">
-                    Score: {result.score?.toFixed(4) || "N/A"}
-                  </p>
                   <p className="mt-2">{result.pageContent}</p>
                 </li>
               ))}

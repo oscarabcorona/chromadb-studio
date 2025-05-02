@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import {
   Dialog,
@@ -20,12 +22,18 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { toast } from "sonner";
+import { createCollection } from "@/app/actions";
 
 const createCollectionSchema = z.object({
   name: z
     .string()
     .min(1, "Collection name is required")
-    .max(64, "Collection name must be less than 64 characters"),
+    .max(64, "Collection name must be less than 64 characters")
+    .regex(
+      /^[a-zA-Z0-9-_]+$/,
+      "Collection name can only contain letters, numbers, hyphens, and underscores"
+    ),
   dimension: z
     .number()
     .int()
@@ -39,11 +47,13 @@ type CreateCollectionForm = z.infer<typeof createCollectionSchema>;
 interface CreateCollectionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
 }
 
 export function CreateCollectionDialog({
   open,
   onOpenChange,
+  onSuccess,
 }: CreateCollectionDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -59,12 +69,22 @@ export function CreateCollectionDialog({
   const onSubmit = async (data: CreateCollectionForm) => {
     setIsLoading(true);
     try {
-      // TODO: Implement collection creation
-      console.log("Creating collection:", data);
-      onOpenChange(false);
-      form.reset();
+      const result = await createCollection(data.name, data.dimension);
+      if (result.success) {
+        toast.success("Collection created successfully");
+        onOpenChange(false);
+        form.reset();
+        onSuccess?.();
+      } else {
+        toast.error("Failed to create collection", {
+          description: result.error,
+        });
+      }
     } catch (error) {
-      console.error("Failed to create collection:", error);
+      toast.error("Failed to create collection", {
+        description:
+          error instanceof Error ? error.message : "Unknown error occurred",
+      });
     } finally {
       setIsLoading(false);
     }
