@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-  addDocument,
   deleteDocument,
   updateDocument,
   getCollectionDocuments,
@@ -15,7 +14,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -40,14 +38,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { QueryResult } from "@/types/embeddings";
-import {
-  CircleCheck,
-  Edit,
-  FileText,
-  Plus,
-  RefreshCw,
-  Trash2,
-} from "lucide-react";
+import { CircleCheck, Edit, FileText, RefreshCw, Trash2 } from "lucide-react";
 
 interface DocumentsManagerProps {
   collectionName: string;
@@ -67,9 +58,7 @@ export function DocumentsManager({
       ? initialDocuments.data
       : []
   );
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [newDocumentContent, setNewDocumentContent] = useState("");
   const [editDocumentId, setEditDocumentId] = useState("");
   const [editDocumentContent, setEditDocumentContent] = useState("");
   const [deleteDocumentId, setDeleteDocumentId] = useState("");
@@ -109,34 +98,6 @@ export function DocumentsManager({
   if (isLoading && !initialDocuments?.success) {
     refreshDocuments();
   }
-
-  const handleAddDocument = async () => {
-    if (!newDocumentContent.trim()) {
-      toast.error("Document content cannot be empty");
-      return;
-    }
-
-    try {
-      const result = await addDocument(collectionName, {
-        content: newDocumentContent,
-      });
-
-      if (result.success) {
-        toast.success("Document added successfully");
-        setIsAddDialogOpen(false);
-        setNewDocumentContent("");
-        refreshDocuments();
-      } else {
-        toast.error(`Failed to add document: ${result.error}`);
-      }
-    } catch (error) {
-      toast.error(
-        `An error occurred: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
-    }
-  };
 
   const handleUpdateDocument = async () => {
     if (!editDocumentContent.trim()) {
@@ -234,45 +195,6 @@ export function DocumentsManager({
             />
             Refresh
           </Button>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-1" /> Add Document
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Document</DialogTitle>
-                <DialogDescription>
-                  Add a new document to the collection. The document will be
-                  automatically embedded.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="content">Document Content</Label>
-                  <Textarea
-                    id="content"
-                    value={newDocumentContent}
-                    onChange={(e) => setNewDocumentContent(e.target.value)}
-                    rows={10}
-                    placeholder="Enter document content here..."
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsAddDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button onClick={handleAddDocument}>
-                  <CircleCheck className="h-4 w-4 mr-1" /> Add Document
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </div>
       </div>
 
@@ -281,11 +203,8 @@ export function DocumentsManager({
           <FileText className="h-12 w-12 mx-auto text-muted-foreground" />
           <h3 className="mt-4 text-lg font-medium">No documents found</h3>
           <p className="text-muted-foreground mt-2">
-            Get started by adding a document to this collection.
+            Get started by uploading documents to this collection.
           </p>
-          <Button className="mt-4" onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" /> Add your first document
-          </Button>
         </div>
       ) : (
         <div className="border rounded-md overflow-hidden">
