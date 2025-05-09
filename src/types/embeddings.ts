@@ -30,6 +30,9 @@ export interface QueryResult {
     [key: string]: string | number | boolean | null | undefined;
   };
   embedding?: number[];
+  distance?: number;
+  similarityScore?: number;
+  isRelated?: boolean;
 }
 
 export interface EmbeddingFunction {

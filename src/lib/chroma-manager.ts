@@ -290,6 +290,11 @@ export class ChromaDBManager {
       (Array.isArray(results.metadatas[0])
         ? results.metadatas[0]
         : results.metadatas);
+    const distances =
+      results.distances &&
+      (Array.isArray(results.distances[0])
+        ? results.distances[0]
+        : results.distances);
 
     return docs.map((doc, i) => {
       const metadata = (metadatas && metadatas[i]) || {};
@@ -300,11 +305,13 @@ export class ChromaDBManager {
       const embedding = Array.isArray(embeddings[i])
         ? embeddings[i]
         : [embeddings[i]];
+      const distance = distances ? distances[i] : undefined;
 
       return {
         pageContent: content || "",
         metadata: documentMetadata,
         embedding: embedding as number[],
+        distance,
       };
     });
   }

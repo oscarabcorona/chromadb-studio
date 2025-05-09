@@ -7,6 +7,8 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DocumentsManager } from "@/components/documents/documents-manager";
 import { DocumentsStatus } from "@/components/documents/documents-status";
+import { QueryForm } from "@/components/documents/query-form";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface PageProps {
   params: Promise<{ collectionName: string }>;
@@ -52,6 +54,17 @@ export default async function CollectionPage({ params }: PageProps) {
           <DocumentsStatus collection={collection.data} />
         </Suspense>
         <div className="h-4"></div>
+
+        {/* Query Section */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Search Collection</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <QueryForm collectionName={collectionName} />
+          </CardContent>
+        </Card>
+
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold">Documents</h2>
         </div>
