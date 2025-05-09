@@ -381,6 +381,7 @@ export function useFileUpload({
     setActiveTab,
     setActiveFile,
     setProcessingSettings,
+    setShowProcessingDialog,
 
     // Actions
     handleFileChange,

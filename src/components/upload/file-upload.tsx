@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useRef, useMemo, useTransition } from "react";
+import { useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -31,7 +30,6 @@ import {
   InfoIcon,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { uploadFile, processFiles } from "@/app/actions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -47,85 +45,44 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useMutation } from "@tanstack/react-query";
 import { Label } from "@/components/ui/label";
-import {
-  FileUploadProps,
-  UploadedFile,
-  ProcessingSettings,
-  WorkflowStep,
-  FileStatus,
-  ProcessingMethod,
-} from "@/types/document-upload";
+import { FileUploadProps, ProcessingMethod } from "@/types/document-upload";
 import { PROCESSING_METHOD_INFO } from "@/lib/document-processing";
+import { useFileUpload } from "@/hooks/use-file-upload";
+import { useMemo } from "react";
 
 export function FileUpload({ collectionName, onComplete }: FileUploadProps) {
   const [isPending, startTransition] = useTransition();
-  const [files, setFiles] = useState<UploadedFile[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("upload");
-  const [activeFile, setActiveFile] = useState<string | null>(null);
-  const [processingStep, setProcessingStep] = useState<WorkflowStep>("upload");
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [showProcessingDialog, setShowProcessingDialog] = useState(false);
-  const [processingComplete, setProcessingComplete] = useState(false);
 
-  // Processing settings state
-  const [processingSettings, setProcessingSettings] =
-    useState<ProcessingSettings>({
-      chunkSize: 1000,
-      chunkOverlap: 200,
-      processingMethod: "default",
-    });
-
-  // Upload mutation
-  const uploadMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
-      return await uploadFile(formData);
-    },
+  const {
+    files,
+    isOpen,
+    activeTab,
+    activeFile,
+    processingStep,
+    fileInputRef,
+    showProcessingDialog,
+    processingComplete,
+    processingSettings,
+    completeFilesCount,
+    setIsOpen,
+    setActiveTab,
+    setActiveFile,
+    setProcessingSettings,
+    handleFileChange,
+    removeFile,
+    clearFiles,
+    resetForm,
+    closeAndComplete: hookCloseAndComplete,
+    handleDragOver,
+    handleDrop,
+    handleUpload,
+    startProcessing,
+    setShowProcessingDialog,
+  } = useFileUpload({
+    collectionName,
+    onComplete,
   });
-
-  // Process files mutation
-  const processMutation = useMutation({
-    mutationFn: async (options: {
-      collectionName: string;
-      fileNames: string[];
-      chunkSize: number;
-      chunkOverlap: number;
-      processingMethod: string;
-    }) => {
-      return await processFiles(options.collectionName, {
-        fileNames: options.fileNames,
-        chunkSize: options.chunkSize,
-        chunkOverlap: options.chunkOverlap,
-        processingMethod: options.processingMethod,
-      });
-    },
-  });
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-
-    const newFiles = Array.from(e.target.files).map((file) => ({
-      id: crypto.randomUUID(),
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      status: "idle" as FileStatus,
-      progress: 0,
-      file,
-      workflowStep: "upload" as WorkflowStep,
-    }));
-
-    setFiles((prev) => [...prev, ...newFiles]);
-  };
-
-  const removeFile = (id: string) => {
-    setFiles((prev) => prev.filter((file) => file.id !== id));
-    if (activeFile === id) {
-      setActiveFile(null);
-    }
-  };
 
   const formatBytes = (bytes: number, decimals = 2) => {
     if (bytes === 0) return "0 Bytes";
@@ -134,272 +91,6 @@ export function FileUpload({ collectionName, onComplete }: FileUploadProps) {
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
-  };
-
-  const handleUpload = async () => {
-    if (files.length === 0) {
-      toast.error("Please add files to upload");
-      return;
-    }
-
-    // Update all files to uploading status
-    setFiles((prev) =>
-      prev.map((file) => ({
-        ...file,
-        status: "uploading",
-        progress: 0,
-        workflowStep: "upload",
-      }))
-    );
-
-    setProcessingStep("upload");
-
-    // Upload files one by one
-    for (const fileData of files) {
-      try {
-        if (!fileData.file) continue;
-
-        setActiveFile(fileData.id);
-
-        // Update this specific file's status
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === fileData.id
-              ? {
-                  ...f,
-                  status: "uploading",
-                  progress: 10,
-                  workflowStep: "upload",
-                }
-              : f
-          )
-        );
-
-        const formData = new FormData();
-        formData.append("file", fileData.file);
-        formData.append("fileName", fileData.name);
-        formData.append("collectionName", collectionName);
-
-        // Simulate upload progress
-        setFiles((prev) =>
-          prev.map((f) => (f.id === fileData.id ? { ...f, progress: 40 } : f))
-        );
-
-        const result = await uploadMutation.mutateAsync(formData);
-
-        if (result.success) {
-          setFiles((prev) =>
-            prev.map((f) =>
-              f.id === fileData.id
-                ? { ...f, status: "complete", progress: 100 }
-                : f
-            )
-          );
-        } else {
-          setFiles((prev) =>
-            prev.map((f) =>
-              f.id === fileData.id
-                ? {
-                    ...f,
-                    status: "error",
-                    progress: 0,
-                    error: result.error || "Upload failed",
-                  }
-                : f
-            )
-          );
-          toast.error(`Failed to upload ${fileData.name}: ${result.error}`);
-        }
-      } catch (error) {
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === fileData.id
-              ? {
-                  ...f,
-                  status: "error",
-                  progress: 0,
-                  error:
-                    error instanceof Error ? error.message : "Unknown error",
-                }
-              : f
-          )
-        );
-        toast.error(
-          `Error uploading ${fileData.name}: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`
-        );
-      }
-    }
-
-    // Navigate to process tab after uploads complete
-    setActiveTab("process");
-  };
-
-  const startProcessing = async () => {
-    setShowProcessingDialog(true);
-    setProcessingStep("processing");
-    setProcessingComplete(false);
-
-    try {
-      // Only process files that were successfully uploaded
-      const uploadedFileIds = files
-        .filter((f) => f.status === "complete")
-        .map((f) => f.name);
-
-      if (uploadedFileIds.length === 0) {
-        toast.error("No successfully uploaded files to process");
-        return;
-      }
-
-      // Get the first complete file to track progress for
-      const firstCompleteFile = files.find((f) => f.status === "complete");
-      if (firstCompleteFile) {
-        setActiveFile(firstCompleteFile.id);
-      }
-
-      // Set all files to processing
-      setFiles((prev) =>
-        prev.map((f) =>
-          f.status === "complete"
-            ? {
-                ...f,
-                status: "processing",
-                progress: 0,
-                workflowStep: "processing",
-              }
-            : f
-        )
-      );
-
-      // Simulate the text splitting step with optimized animation frames
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setProcessingStep("splitting");
-      setFiles((prev) =>
-        prev.map((f) =>
-          f.status === "processing"
-            ? { ...f, workflowStep: "splitting", progress: 30 }
-            : f
-        )
-      );
-
-      // Simulate the embedding step
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setProcessingStep("embedding");
-      setFiles((prev) =>
-        prev.map((f) =>
-          f.status === "processing"
-            ? { ...f, workflowStep: "embedding", progress: 60 }
-            : f
-        )
-      );
-
-      // Simulate the storing step
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      setProcessingStep("storing");
-      setFiles((prev) =>
-        prev.map((f) =>
-          f.status === "processing"
-            ? { ...f, workflowStep: "storing", progress: 80 }
-            : f
-        )
-      );
-
-      const result = await processMutation.mutateAsync({
-        collectionName,
-        fileNames: uploadedFileIds,
-        chunkSize: processingSettings.chunkSize,
-        chunkOverlap: processingSettings.chunkOverlap,
-        processingMethod: processingSettings.processingMethod,
-      });
-
-      if (result.success) {
-        // Update files to processed
-        setProcessingStep("complete");
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.status === "processing"
-              ? {
-                  ...f,
-                  status: "complete",
-                  progress: 100,
-                  workflowStep: "complete",
-                }
-              : f
-          )
-        );
-
-        // Set processing as complete to show final step
-        setProcessingComplete(true);
-        toast.success("Files processed successfully");
-      } else {
-        // Update files to error
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.status === "processing"
-              ? {
-                  ...f,
-                  status: "error",
-                  progress: 0,
-                  error: result.error || "Processing failed",
-                }
-              : f
-          )
-        );
-        toast.error(`Failed to process files: ${result.error}`);
-      }
-    } catch (error) {
-      toast.error(
-        `Error processing files: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!e.dataTransfer.files || e.dataTransfer.files.length === 0) return;
-
-    const newFiles = Array.from(e.dataTransfer.files).map((file) => ({
-      id: crypto.randomUUID(),
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      status: "idle" as FileStatus,
-      progress: 0,
-      file,
-      workflowStep: "upload" as WorkflowStep,
-    }));
-
-    setFiles((prev) => [...prev, ...newFiles]);
-  };
-
-  const clearFiles = () => {
-    setFiles([]);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  const resetForm = () => {
-    setProcessingSettings({
-      chunkSize: 1000,
-      chunkOverlap: 200,
-      processingMethod: "default",
-    });
-    clearFiles();
-    setActiveTab("upload");
-    setShowProcessingDialog(false);
-    setProcessingComplete(false);
-    setActiveFile(null);
   };
 
   // Calculate active file data once
@@ -412,17 +103,9 @@ export function FileUpload({ collectionName, onComplete }: FileUploadProps) {
 
   const closeAndComplete = () => {
     startTransition(() => {
-      resetForm();
-      setShowProcessingDialog(false);
-      setIsOpen(false);
-      onComplete();
+      hookCloseAndComplete();
     });
   };
-
-  // Memoize files that are complete
-  const completeFilesCount = useMemo(() => {
-    return files.filter((f) => f.status === "complete").length;
-  }, [files]);
 
   // Use memoization for the file list to prevent unnecessary re-renders
   const fileList = useMemo(() => {
@@ -466,7 +149,7 @@ export function FileUpload({ collectionName, onComplete }: FileUploadProps) {
         </div>
       </div>
     ));
-  }, [files, activeFile, formatBytes, removeFile]);
+  }, [files, activeFile, formatBytes, removeFile, setActiveFile]);
 
   return (
     <>
