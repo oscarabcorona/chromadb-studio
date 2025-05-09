@@ -39,6 +39,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { QueryResult } from "@/types/embeddings";
 import { CircleCheck, Edit, FileText, RefreshCw, Trash2 } from "lucide-react";
+import { FileUploadWrapper } from "./file-upload-wrapper";
 
 interface DocumentsManagerProps {
   collectionName: string;
@@ -195,6 +196,7 @@ export function DocumentsManager({
             />
             Refresh
           </Button>
+          <FileUploadWrapper collectionName={collectionName} />
         </div>
       </div>
 

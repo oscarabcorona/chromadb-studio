@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useRef, useMemo, useCallback, useTransition } from "react";
+import { useState, useRef, useMemo, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -49,6 +48,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useMutation } from "@tanstack/react-query";
+import { Label } from "@/components/ui/label";
 
 interface FileUploadProps {
   collectionName: string;
@@ -76,6 +76,14 @@ interface UploadedFile {
   workflowStep?: WorkflowStep;
 }
 
+type ProcessingMethod = "default" | "recursive" | "markdown";
+
+interface ProcessingSettings {
+  chunkSize: number;
+  chunkOverlap: number;
+  processingMethod: ProcessingMethod;
+}
+
 const PROCESSING_METHOD_INFO = {
   default: {
     title: "Default Text Splitting",
@@ -100,13 +108,18 @@ export function FileUpload({ collectionName, onComplete }: FileUploadProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("upload");
   const [activeFile, setActiveFile] = useState<string | null>(null);
-  const [chunkSize, setChunkSize] = useState(1000);
-  const [chunkOverlap, setChunkOverlap] = useState(200);
-  const [processingMethod, setProcessingMethod] = useState("default");
   const [processingStep, setProcessingStep] = useState<WorkflowStep>("upload");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showProcessingDialog, setShowProcessingDialog] = useState(false);
   const [processingComplete, setProcessingComplete] = useState(false);
+
+  // Processing settings state
+  const [processingSettings, setProcessingSettings] =
+    useState<ProcessingSettings>({
+      chunkSize: 1000,
+      chunkOverlap: 200,
+      processingMethod: "default",
+    });
 
   // Upload mutation
   const uploadMutation = useMutation({
@@ -133,46 +146,40 @@ export function FileUpload({ collectionName, onComplete }: FileUploadProps) {
     },
   });
 
-  const handleFileChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (!e.target.files || e.target.files.length === 0) return;
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
 
-      const newFiles = Array.from(e.target.files).map((file) => ({
-        id: crypto.randomUUID(),
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        status: "idle" as FileStatus,
-        progress: 0,
-        file,
-        workflowStep: "upload" as WorkflowStep,
-      }));
+    const newFiles = Array.from(e.target.files).map((file) => ({
+      id: crypto.randomUUID(),
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      status: "idle" as FileStatus,
+      progress: 0,
+      file,
+      workflowStep: "upload" as WorkflowStep,
+    }));
 
-      setFiles((prev) => [...prev, ...newFiles]);
-    },
-    []
-  );
+    setFiles((prev) => [...prev, ...newFiles]);
+  };
 
-  const removeFile = useCallback(
-    (id: string) => {
-      setFiles((prev) => prev.filter((file) => file.id !== id));
-      if (activeFile === id) {
-        setActiveFile(null);
-      }
-    },
-    [activeFile]
-  );
+  const removeFile = (id: string) => {
+    setFiles((prev) => prev.filter((file) => file.id !== id));
+    if (activeFile === id) {
+      setActiveFile(null);
+    }
+  };
 
-  const formatBytes = useCallback((bytes: number, decimals = 2) => {
+  const formatBytes = (bytes: number, decimals = 2) => {
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
     const dm = decimals < 0 ? 0 : decimals;
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
-  }, []);
+  };
 
-  const handleUpload = useCallback(async () => {
+  const handleUpload = async () => {
     if (files.length === 0) {
       toast.error("Please add files to upload");
       return;
@@ -270,9 +277,9 @@ export function FileUpload({ collectionName, onComplete }: FileUploadProps) {
 
     // Navigate to process tab after uploads complete
     setActiveTab("process");
-  }, [files, collectionName, uploadMutation]);
+  };
 
-  const startProcessing = useCallback(async () => {
+  const startProcessing = async () => {
     setShowProcessingDialog(true);
     setProcessingStep("processing");
     setProcessingComplete(false);
@@ -344,9 +351,9 @@ export function FileUpload({ collectionName, onComplete }: FileUploadProps) {
       const result = await processMutation.mutateAsync({
         collectionName,
         fileNames: uploadedFileIds,
-        chunkSize,
-        chunkOverlap,
-        processingMethod,
+        chunkSize: processingSettings.chunkSize,
+        chunkOverlap: processingSettings.chunkOverlap,
+        processingMethod: processingSettings.processingMethod,
       });
 
       if (result.success) {
@@ -391,21 +398,14 @@ export function FileUpload({ collectionName, onComplete }: FileUploadProps) {
         }`
       );
     }
-  }, [
-    files,
-    collectionName,
-    chunkSize,
-    chunkOverlap,
-    processingMethod,
-    processMutation,
-  ]);
+  };
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-  }, []);
+  };
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -423,14 +423,27 @@ export function FileUpload({ collectionName, onComplete }: FileUploadProps) {
     }));
 
     setFiles((prev) => [...prev, ...newFiles]);
-  }, []);
+  };
 
-  const clearFiles = useCallback(() => {
+  const clearFiles = () => {
     setFiles([]);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-  }, []);
+  };
+
+  const resetForm = () => {
+    setProcessingSettings({
+      chunkSize: 1000,
+      chunkOverlap: 200,
+      processingMethod: "default",
+    });
+    clearFiles();
+    setActiveTab("upload");
+    setShowProcessingDialog(false);
+    setProcessingComplete(false);
+    setActiveFile(null);
+  };
 
   // Calculate active file data once
   const activeFileData = useMemo(() => {
@@ -440,13 +453,14 @@ export function FileUpload({ collectionName, onComplete }: FileUploadProps) {
     return files.length > 0 ? files[0] : null;
   }, [activeFile, files]);
 
-  const closeAndComplete = useCallback(() => {
+  const closeAndComplete = () => {
     startTransition(() => {
+      resetForm();
       setShowProcessingDialog(false);
       setIsOpen(false);
       onComplete();
     });
-  }, [onComplete]);
+  };
 
   // Memoize files that are complete
   const completeFilesCount = useMemo(() => {
@@ -504,7 +518,15 @@ export function FileUpload({ collectionName, onComplete }: FileUploadProps) {
         Upload Files
       </Button>
 
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <Dialog
+        open={isOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            resetForm();
+          }
+          setIsOpen(open);
+        }}
+      >
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Upload Documents</DialogTitle>
@@ -582,103 +604,120 @@ export function FileUpload({ collectionName, onComplete }: FileUploadProps) {
                     Define how your documents will be processed and embedded
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="chunkSize">Chunk Size</Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        id="chunkSize"
-                        type="number"
-                        value={chunkSize}
-                        onChange={(e) =>
-                          setChunkSize(parseInt(e.target.value) || 1000)
-                        }
-                        min={100}
-                        max={5000}
-                      />
-                      <span className="text-sm text-muted-foreground">
-                        characters
-                      </span>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="chunkSize">Chunk Size</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="chunkSize"
+                          type="number"
+                          value={processingSettings.chunkSize}
+                          onChange={(e) =>
+                            setProcessingSettings((prev) => ({
+                              ...prev,
+                              chunkSize: parseInt(e.target.value) || 1000,
+                            }))
+                          }
+                          min={100}
+                          max={5000}
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          characters
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Size of text chunks for embedding (recommended:
+                        1000-2000)
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Size of text chunks for embedding (recommended: 1000-2000)
-                    </p>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="chunkOverlap">Chunk Overlap</Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        id="chunkOverlap"
-                        type="number"
-                        value={chunkOverlap}
-                        onChange={(e) =>
-                          setChunkOverlap(parseInt(e.target.value) || 200)
-                        }
-                        min={0}
-                        max={1000}
-                      />
-                      <span className="text-sm text-muted-foreground">
-                        characters
-                      </span>
+                    <div className="space-y-2">
+                      <Label htmlFor="chunkOverlap">Chunk Overlap</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="chunkOverlap"
+                          type="number"
+                          value={processingSettings.chunkOverlap}
+                          onChange={(e) =>
+                            setProcessingSettings((prev) => ({
+                              ...prev,
+                              chunkOverlap: parseInt(e.target.value) || 200,
+                            }))
+                          }
+                          min={0}
+                          max={1000}
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          characters
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Overlap between chunks (recommended: 10-20% of chunk
+                        size)
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Overlap between chunks (recommended: 10-20% of chunk size)
-                    </p>
-                  </div>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="processingMethod">
-                        Processing Method
-                      </Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <InfoIcon className="h-4 w-4 text-muted-foreground" />
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-xs">
-                            <p className="font-medium">Processing Methods:</p>
-                            <ul className="text-xs mt-1 space-y-1">
-                              {Object.entries(PROCESSING_METHOD_INFO).map(
-                                ([key, info]) => (
-                                  <li key={key} className="mt-1">
-                                    <span className="font-medium">
-                                      {info.title}:
-                                    </span>{" "}
-                                    {info.description}
-                                  </li>
-                                )
-                              )}
-                            </ul>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="processingMethod">
+                          Processing Method
+                        </Label>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <InfoIcon className="h-4 w-4 text-muted-foreground" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <p className="font-medium">Processing Methods:</p>
+                              <ul className="text-xs mt-1 space-y-1">
+                                {Object.entries(PROCESSING_METHOD_INFO).map(
+                                  ([key, info]) => (
+                                    <li key={key} className="mt-1">
+                                      <span className="font-medium">
+                                        {info.title}:
+                                      </span>{" "}
+                                      {info.description}
+                                    </li>
+                                  )
+                                )}
+                              </ul>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      <Select
+                        value={processingSettings.processingMethod}
+                        onValueChange={(value) =>
+                          setProcessingSettings((prev) => ({
+                            ...prev,
+                            processingMethod: value as ProcessingMethod,
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a processing method" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="default">
+                            Default Text Splitting
+                          </SelectItem>
+                          <SelectItem value="recursive">
+                            Recursive Character Splitting
+                          </SelectItem>
+                          <SelectItem value="markdown">
+                            Markdown Aware
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {
+                          PROCESSING_METHOD_INFO[
+                            processingSettings.processingMethod
+                          ]?.description
+                        }
+                      </p>
                     </div>
-                    <Select
-                      value={processingMethod}
-                      onValueChange={setProcessingMethod}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a processing method" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="default">
-                          Default Text Splitting
-                        </SelectItem>
-                        <SelectItem value="recursive">
-                          Recursive Character Splitting
-                        </SelectItem>
-                        <SelectItem value="markdown">Markdown Aware</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      {
-                        PROCESSING_METHOD_INFO[
-                          processingMethod as keyof typeof PROCESSING_METHOD_INFO
-                        ]?.description
-                      }
-                    </p>
                   </div>
                 </CardContent>
                 <CardFooter>
@@ -747,9 +786,9 @@ export function FileUpload({ collectionName, onComplete }: FileUploadProps) {
               <WorkflowTimeline
                 currentStep={activeFileData.workflowStep || processingStep}
                 fileName={activeFileData.name}
-                processingMethod={processingMethod}
-                chunkSize={chunkSize}
-                chunkOverlap={chunkOverlap}
+                processingMethod={processingSettings.processingMethod}
+                chunkSize={processingSettings.chunkSize}
+                chunkOverlap={processingSettings.chunkOverlap}
               />
             )}
           </div>

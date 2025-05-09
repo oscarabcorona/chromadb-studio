@@ -7,7 +7,6 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DocumentsManager } from "@/components/documents/documents-manager";
 import { DocumentsStatus } from "@/components/documents/documents-status";
-import { FileUploadWrapper } from "@/components/documents/file-upload-wrapper";
 
 interface PageProps {
   params: Promise<{ collectionName: string }>;
@@ -55,7 +54,6 @@ export default async function CollectionPage({ params }: PageProps) {
         <div className="h-4"></div>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold">Documents</h2>
-          <FileUploadWrapper collectionName={collectionName} />
         </div>
         <Suspense fallback={<DocumentsTableSkeleton />}>
           <DocumentsManager
