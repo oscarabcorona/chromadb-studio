@@ -49,58 +49,15 @@ import {
 } from "@/components/ui/tooltip";
 import { useMutation } from "@tanstack/react-query";
 import { Label } from "@/components/ui/label";
-
-interface FileUploadProps {
-  collectionName: string;
-  onComplete: () => void;
-}
-
-type FileStatus = "idle" | "uploading" | "processing" | "complete" | "error";
-type WorkflowStep =
-  | "upload"
-  | "processing"
-  | "splitting"
-  | "embedding"
-  | "storing"
-  | "complete";
-
-interface UploadedFile {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  status: FileStatus;
-  progress: number;
-  error?: string;
-  file?: File;
-  workflowStep?: WorkflowStep;
-}
-
-type ProcessingMethod = "default" | "recursive" | "markdown";
-
-interface ProcessingSettings {
-  chunkSize: number;
-  chunkOverlap: number;
-  processingMethod: ProcessingMethod;
-}
-
-const PROCESSING_METHOD_INFO = {
-  default: {
-    title: "Default Text Splitting",
-    description:
-      "Splits text by paragraphs and then by sentences if needed. Good for general text documents.",
-  },
-  recursive: {
-    title: "Recursive Character Splitting",
-    description:
-      "Recursively splits text by characters, periods, then paragraphs. Best for long, dense texts with varied structure.",
-  },
-  markdown: {
-    title: "Markdown Aware",
-    description:
-      "Respects Markdown headings and structure when splitting. Ideal for Markdown documents or those with clear hierarchical structure.",
-  },
-};
+import {
+  FileUploadProps,
+  UploadedFile,
+  ProcessingSettings,
+  WorkflowStep,
+  FileStatus,
+  ProcessingMethod,
+} from "@/types/document-upload";
+import { PROCESSING_METHOD_INFO } from "@/lib/document-processing";
 
 export function FileUpload({ collectionName, onComplete }: FileUploadProps) {
   const [isPending, startTransition] = useTransition();
