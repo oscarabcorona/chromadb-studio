@@ -40,7 +40,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { WorkflowTimeline } from "./workflow-timeline";
+import { WorkflowTimeline } from "../documents/workflow-timeline";
 import {
   Tooltip,
   TooltipContent,

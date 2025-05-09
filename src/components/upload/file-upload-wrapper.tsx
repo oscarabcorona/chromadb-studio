@@ -1,7 +1,7 @@
 "use client";
 
-import { FileUpload } from "./file-upload";
 import { useRouter } from "next/navigation";
+import { FileUpload } from "./file-upload";
 
 interface FileUploadWrapperProps {
   collectionName: string;
