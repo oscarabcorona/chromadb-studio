@@ -23,7 +23,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { toast } from "sonner";
-import { createCollection } from "@/app/actions";
+import { createCollection } from "@/app/actions/collections";
 
 const createCollectionSchema = z.object({
   name: z

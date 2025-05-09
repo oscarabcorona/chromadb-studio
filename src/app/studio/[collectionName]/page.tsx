@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { DocumentsTableSkeleton } from "@/components/documents/documents-table-skeleton";
-import { getCollectionDocuments, getCollectionInfo } from "@/app/actions";
+import { getCollectionDocuments } from "@/app/actions/documents";
+import { getCollectionInfo } from "@/app/actions/collections";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";

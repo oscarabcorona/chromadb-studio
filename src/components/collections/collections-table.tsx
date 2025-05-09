@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { deleteCollection } from "@/app/actions";
+import { deleteCollection } from "@/app/actions/collections";
 import { CollectionInfo } from "@/types/embeddings";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CollectionViewDialog } from "./collection-view-dialog";

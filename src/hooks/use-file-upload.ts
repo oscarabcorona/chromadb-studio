@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
-import { uploadFile, processFiles } from "@/app/actions";
+import { uploadFile, processFiles } from "@/app/actions/uploads";
 import {
   UploadedFile,
   ProcessingSettings,

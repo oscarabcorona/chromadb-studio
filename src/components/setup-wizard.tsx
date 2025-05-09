@@ -16,7 +16,7 @@ import { ConnectionStatus } from "./connection-status";
 import { Steps, Step } from "@/components/ui/steps";
 import { DatabaseIcon, FolderIcon, LayoutDashboardIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { listCollections, testConnection } from "@/app/actions";
+import { listCollections, testConnection } from "@/app/actions/collections";
 import { toast } from "sonner";
 
 export function SetupWizard() {

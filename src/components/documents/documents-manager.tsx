@@ -5,7 +5,8 @@ import {
   deleteDocument,
   updateDocument,
   getCollectionDocuments,
-} from "@/app/actions";
+  addDocument,
+} from "@/app/actions/documents";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -40,6 +41,8 @@ import { toast } from "sonner";
 import { QueryResult } from "@/types/embeddings";
 import { CircleCheck, Edit, FileText, RefreshCw, Trash2 } from "lucide-react";
 import { FileUploadWrapper } from "../upload/file-upload-wrapper";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface DocumentsManagerProps {
   collectionName: string;
@@ -70,6 +73,7 @@ export function DocumentsManager({
   const [error, setError] = useState<string | null>(
     initialDocuments?.error || null
   );
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   // Function to load documents manually
   const refreshDocuments = async () => {
@@ -162,6 +166,100 @@ export function DocumentsManager({
     return text.substring(0, maxLength) + "...";
   };
 
+  // Component for adding documents via text input
+  function AddDocumentForm({
+    collectionName,
+    onSuccess,
+  }: {
+    collectionName: string;
+    onSuccess: () => void;
+  }) {
+    const [content, setContent] = useState("");
+    const [source, setSource] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+
+      if (!content.trim()) {
+        toast.error("Document content is required");
+        return;
+      }
+
+      setIsSubmitting(true);
+
+      try {
+        // Create metadata with optional source
+        const metadata: { source?: string } = {};
+        if (source.trim()) {
+          metadata.source = source.trim();
+        }
+
+        const result = await addDocument(collectionName, {
+          content: content.trim(),
+          metadata,
+        });
+
+        if (result.success) {
+          toast.success("Document added successfully");
+          setContent("");
+          setSource("");
+          onSuccess();
+        } else {
+          toast.error(`Failed to add document: ${result.error}`);
+        }
+      } catch (error) {
+        toast.error(
+          `An error occurred: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Add Document</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="source">Source (optional)</Label>
+              <Input
+                id="source"
+                placeholder="Document source"
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="content">Content</Label>
+              <Textarea
+                id="content"
+                placeholder="Enter document content..."
+                rows={5}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                className="resize-y"
+              />
+            </div>
+            <Button type="submit" disabled={isSubmitting} className="w-full">
+              {isSubmitting ? (
+                <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <CircleCheck className="h-4 w-4 mr-2" />
+              )}
+              Add Document
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (isLoading) {
     return <p>Loading documents...</p>;
   }
@@ -195,6 +293,14 @@ export function DocumentsManager({
               className={`h-4 w-4 mr-1 ${isRefreshing ? "animate-spin" : ""}`}
             />
             Refresh
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsAddDialogOpen(true)}
+          >
+            <CircleCheck className="h-4 w-4 mr-1" />
+            Add Document
           </Button>
           <FileUploadWrapper collectionName={collectionName} />
         </div>
@@ -289,39 +395,54 @@ export function DocumentsManager({
         </div>
       )}
 
-      {/* Edit Document Dialog */}
+      {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Document</DialogTitle>
             <DialogDescription>
-              Update the content of this document. The document will be
-              re-embedded.
+              Update the content of the document. This will regenerate
+              embeddings while preserving metadata.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="editContent">Document Content</Label>
-              <Textarea
-                id="editContent"
-                value={editDocumentContent}
-                onChange={(e) => setEditDocumentContent(e.target.value)}
-                rows={10}
-                placeholder="Enter document content here..."
-              />
-            </div>
+          <div>
+            <Label htmlFor="content">Content</Label>
+            <Textarea
+              id="content"
+              value={editDocumentContent}
+              onChange={(e) => setEditDocumentContent(e.target.value)}
+              className="h-64 resize-none"
+            />
           </div>
           <DialogFooter>
             <Button
-              variant="outline"
-              onClick={() => setIsEditDialogOpen(false)}
+              type="submit"
+              onClick={handleUpdateDocument}
+              disabled={!editDocumentContent.trim()}
             >
-              Cancel
-            </Button>
-            <Button onClick={handleUpdateDocument}>
-              <CircleCheck className="h-4 w-4 mr-1" /> Update Document
+              Save Changes
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Document Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add New Document</DialogTitle>
+            <DialogDescription>
+              Add a new document to the collection. The text will be embedded
+              using the collection&apos;s embedding model.
+            </DialogDescription>
+          </DialogHeader>
+          <AddDocumentForm
+            collectionName={collectionName}
+            onSuccess={() => {
+              refreshDocuments();
+              setIsAddDialogOpen(false);
+            }}
+          />
         </DialogContent>
       </Dialog>
     </div>

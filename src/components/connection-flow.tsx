@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useChromaStore } from "@/store/chroma-store";
 import { ConnectionDialog } from "./connection-dialog";
 import { CreateCollectionDialog } from "./collections/create-collection-dialog";
-import { listCollections } from "@/app/actions";
+import { listCollections } from "@/app/actions/collections";
 import { Loader2 } from "lucide-react";
 
 export function ConnectionFlow() {

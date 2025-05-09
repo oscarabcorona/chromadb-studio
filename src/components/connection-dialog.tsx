@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/form";
 import { toast } from "sonner";
 import { useChromaStore } from "@/store/chroma-store";
-import { testConnection } from "@/app/actions";
+import { testConnection } from "@/app/actions/collections";
 import { Loader2 } from "lucide-react";
 
 const connectionSchema = z.object({

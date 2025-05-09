@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { QueryResult } from "@/types/embeddings";
 import { Loader2, Search, Lightbulb } from "lucide-react";
-import { queryCollection } from "@/app/actions";
+import { queryCollection } from "@/app/actions/documents";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";

@@ -305,7 +305,13 @@ export class ChromaDBManager {
       const embedding = Array.isArray(embeddings[i])
         ? embeddings[i]
         : [embeddings[i]];
-      const distance = distances ? distances[i] : undefined;
+
+      // Convert distance to a single number if it's an array, or ensure it's undefined or a number
+      const distance = distances
+        ? Array.isArray(distances[i])
+          ? distances[i][0] // Take first element if array
+          : distances[i]
+        : undefined;
 
       return {
         pageContent: content || "",
@@ -396,6 +402,46 @@ export class ChromaDBManager {
 
     // Update collection timestamp
     await this.updateCollectionTimestamp();
+  }
+
+  /**
+   * Add a single document from text input
+   * @param text The text content to add
+   * @param metadata Optional metadata
+   * @returns The ID of the added document
+   */
+  async addTextDocument(
+    text: string,
+    metadata: Record<string, string | number | boolean> = {}
+  ): Promise<string> {
+    if (!text || text.trim() === "") {
+      throw new Error("Document content cannot be empty");
+    }
+
+    // Generate a UUID for the document if not provided
+    const docId = (metadata.id as string) || uuidv4();
+
+    // Ensure the metadata includes the ID
+    const fullMetadata = {
+      ...metadata,
+      id: docId,
+    };
+
+    // Get the embedding for the text
+    const embedding = await this.embeddingFunction.embed([text]);
+
+    // Add the document to the collection
+    await this.collection.add({
+      ids: [docId],
+      embeddings: [embedding[0]],
+      metadatas: [fullMetadata],
+      documents: [text],
+    });
+
+    // Update collection timestamp
+    await this.updateCollectionTimestamp();
+
+    return docId;
   }
 
   // Helper method to update the collection's 'updated' timestamp

@@ -4,7 +4,7 @@ import { ConnectionFlow } from "@/components/connection-flow";
 import { useChromaStore } from "@/store/chroma-store";
 import { redirect } from "next/navigation";
 import { useEffect } from "react";
-import { testConnection } from "@/app/actions";
+import { testConnection } from "@/app/actions/collections";
 
 export default function StudioLayout({
   children,
