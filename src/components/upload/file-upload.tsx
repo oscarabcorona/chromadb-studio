@@ -50,6 +50,7 @@ import { FileUploadProps, ProcessingMethod } from "@/types/document-upload";
 import { PROCESSING_METHOD_INFO } from "@/lib/document-processing";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { useMemo } from "react";
+import { formatBytes } from "@/lib/file-utils";
 
 export function FileUpload({ collectionName, onComplete }: FileUploadProps) {
   const [isPending, startTransition] = useTransition();
@@ -83,15 +84,6 @@ export function FileUpload({ collectionName, onComplete }: FileUploadProps) {
     collectionName,
     onComplete,
   });
-
-  const formatBytes = (bytes: number, decimals = 2) => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
-  };
 
   // Calculate active file data once
   const activeFileData = useMemo(() => {
@@ -149,7 +141,7 @@ export function FileUpload({ collectionName, onComplete }: FileUploadProps) {
         </div>
       </div>
     ));
-  }, [files, activeFile, formatBytes, removeFile, setActiveFile]);
+  }, [files, activeFile, removeFile, setActiveFile]);
 
   return (
     <>
@@ -203,7 +195,7 @@ export function FileUpload({ collectionName, onComplete }: FileUploadProps) {
                   Drop files here or click to browse
                 </h3>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Supports PDF, TXT, DOCX, MD files. Max 20MB.
+                  Supports PDF, TXT, DOCX, MD files.
                 </p>
                 <Input
                   type="file"
