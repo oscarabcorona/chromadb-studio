@@ -2,70 +2,11 @@
 
 import { ChromaDBManager } from "@/lib/chroma-manager";
 import { revalidatePath } from "next/cache";
-import { writeFile, mkdir } from "fs/promises";
-import { existsSync } from "fs";
+
 import path from "path";
 
 // Define the upload directory
 const UPLOAD_DIR = path.join(process.cwd(), "uploads");
-
-// Ensure the upload directory exists
-async function ensureUploadDirectory(collectionName: string): Promise<string> {
-  const collectionDir = path.join(UPLOAD_DIR, collectionName);
-
-  if (!existsSync(UPLOAD_DIR)) {
-    await mkdir(UPLOAD_DIR, { recursive: true });
-  }
-
-  if (!existsSync(collectionDir)) {
-    await mkdir(collectionDir, { recursive: true });
-  }
-
-  return collectionDir;
-}
-
-/**
- * Handle file upload
- */
-export async function uploadFile(
-  formData: FormData
-): Promise<{ success: boolean; error?: string; filePath?: string }> {
-  try {
-    const file = formData.get("file") as File;
-    const fileName = formData.get("fileName") as string;
-    const collectionName = formData.get("collectionName") as string;
-
-    if (!file || !fileName || !collectionName) {
-      return {
-        success: false,
-        error: "Missing required parameters",
-      };
-    }
-
-    // Create directories if they don't exist
-    const uploadDir = await ensureUploadDirectory(collectionName);
-
-    // Generate a file path
-    const filePath = path.join(uploadDir, fileName);
-
-    // Convert the file to a buffer
-    const fileBuffer = Buffer.from(await file.arrayBuffer());
-
-    // Write the file to disk
-    await writeFile(filePath, fileBuffer);
-
-    return {
-      success: true,
-      filePath,
-    };
-  } catch (error) {
-    console.error("Failed to upload file:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to upload file",
-    };
-  }
-}
 
 /**
  * Process uploaded files

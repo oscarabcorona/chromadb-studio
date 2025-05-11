@@ -17,11 +17,6 @@ import {
   deleteDocument as deleteDocumentFn,
 } from "./actions/documents";
 
-import {
-  uploadFile as uploadFileFn,
-  processFiles as processFilesFn,
-} from "./actions/uploads";
-
 // Re-export each function individually with "use server" directive
 export async function createCollection(
   ...args: Parameters<typeof createCollectionFn>
@@ -79,12 +74,4 @@ export async function deleteDocument(
   ...args: Parameters<typeof deleteDocumentFn>
 ) {
   return deleteDocumentFn(...args);
-}
-
-export async function uploadFile(...args: Parameters<typeof uploadFileFn>) {
-  return uploadFileFn(...args);
-}
-
-export async function processFiles(...args: Parameters<typeof processFilesFn>) {
-  return processFilesFn(...args);
 }

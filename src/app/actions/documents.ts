@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 export async function getCollectionDocuments(
   collectionName: string
 ): Promise<{ success: boolean; data?: QueryResult[]; error?: string }> {
+  console.log("Running getCollectionDocuments");
   if (!collectionName || collectionName.trim() === "") {
     return {
       success: false,
@@ -35,18 +36,21 @@ export async function getCollectionDocuments(
   }
 }
 
+interface QueryCollectionResult {
+  success: boolean;
+  data?: QueryResult[];
+  related?: QueryResult[];
+  error?: string;
+}
+
 export async function queryCollection(
   collectionName: string,
   query: string,
   nResults: number = 5,
   where: Record<string, unknown> = {},
   includeRelated: boolean = false
-): Promise<{
-  success: boolean;
-  data?: QueryResult[];
-  related?: QueryResult[];
-  error?: string;
-}> {
+): Promise<QueryCollectionResult> {
+  console.log("Running queryCollection");
   if (!collectionName || collectionName.trim() === "") {
     return {
       success: false,
@@ -131,6 +135,7 @@ export async function addDocument(
   collectionName: string,
   document: { content: string; metadata?: DocumentMetadata }
 ): Promise<{ success: boolean; error?: string; id?: string }> {
+  console.log("Running addDocument");
   if (!collectionName || collectionName.trim() === "") {
     return {
       success: false,
