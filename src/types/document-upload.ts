@@ -2,20 +2,23 @@
  * Document upload type definitions
  */
 
-export type FileStatus =
-  | "idle"
-  | "uploading"
-  | "processing"
-  | "complete"
-  | "error";
+export enum FileStatus {
+  Idle = "idle",
+  Uploading = "uploading",
+  Processing = "processing",
+  Complete = "complete",
+  Error = "error",
+}
 
-export type WorkflowStep =
-  | "upload"
-  | "processing"
-  | "splitting"
-  | "embedding"
-  | "storing"
-  | "complete";
+export enum WorkflowStep {
+  Upload = "upload",
+  Uploaded = "uploaded",
+  Processing = "processing",
+  Splitting = "splitting",
+  Embedding = "embedding",
+  Storing = "storing",
+  Complete = "complete",
+}
 
 export interface UploadedFile {
   id: string;

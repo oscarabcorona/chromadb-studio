@@ -331,7 +331,7 @@ FileUploadProps) {
               className="gap-1"
             >
               <ArrowRight className="h-4 w-4" />
-              Upload & Continue
+              Extract & Embed
             </Button>
           )}
         </DialogFooter>

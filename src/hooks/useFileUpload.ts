@@ -23,10 +23,10 @@ export function useFileUpload() {
         name: file.name,
         size: file.size,
         type: file.type,
-        status: "idle" as FileStatus,
+        status: FileStatus.Idle,
         progress: 0,
         file,
-        workflowStep: "upload" as WorkflowStep,
+        workflowStep: WorkflowStep.Upload,
       }));
 
       setFiles((prev) => [...prev, ...newFiles]);
@@ -68,10 +68,10 @@ export function useFileUpload() {
       name: file.name,
       size: file.size,
       type: file.type,
-      status: "idle" as FileStatus,
+      status: FileStatus.Idle,
       progress: 0,
       file,
-      workflowStep: "upload" as WorkflowStep,
+      workflowStep: WorkflowStep.Upload,
     }));
 
     setFiles((prev) => [...prev, ...newFiles]);
@@ -87,9 +87,9 @@ export function useFileUpload() {
     setFiles((prev) =>
       prev.map((file) => ({
         ...file,
-        status: "uploading",
+        status: FileStatus.Processing,
         progress: 0,
-        workflowStep: "upload",
+        workflowStep: WorkflowStep.Processing,
       }))
     );
 
@@ -106,9 +106,9 @@ export function useFileUpload() {
             f.id === fileData.id
               ? {
                   ...f,
-                  status: "uploading",
+                  status: FileStatus.Processing,
                   progress: 10,
-                  workflowStep: "upload",
+                  workflowStep: WorkflowStep.Processing,
                 }
               : f
           )
@@ -118,15 +118,15 @@ export function useFileUpload() {
         formData.append("file", fileData.file);
         formData.append("fileName", fileData.name);
 
-        // Simulate upload progress
-        setFiles((prev) =>
-          prev.map((f) => (f.id === fileData.id ? { ...f, progress: 40 } : f))
-        );
-
         setFiles((prev) =>
           prev.map((f) =>
             f.id === fileData.id
-              ? { ...f, status: "complete", progress: 100 }
+              ? {
+                  ...f,
+                  status: FileStatus.Complete,
+                  progress: 100,
+                  workflowStep: WorkflowStep.Uploaded,
+                }
               : f
           )
         );
@@ -136,7 +136,7 @@ export function useFileUpload() {
             f.id === fileData.id
               ? {
                   ...f,
-                  status: "error",
+                  status: FileStatus.Error,
                   progress: 0,
                   error:
                     error instanceof Error ? error.message : "Unknown error",
